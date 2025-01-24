@@ -4,6 +4,7 @@ from typing import Dict, Optional, Union
 
 import numpy as np
 import psm_utils.io
+from mumble import PSMHandler
 from psm_utils import PSMList
 
 from ms2rescore.exceptions import MS2RescoreConfigurationError
@@ -89,6 +90,36 @@ def parse_psms(config: Dict, psm_list: Union[PSMList, None]) -> PSMList:
         )
         new_ids = [_match_psm_ids(old_id, pattern) for old_id in psm_list["spectrum_id"]]
         psm_list["spectrum_id"] = new_ids
+
+    # Addition of Modifications for mass shifts in the PSMs with Mumble
+    if "mumble" in config["psm_generator"]:
+        logger.debug("Applying modifications for mass shifts using Mumble...")
+
+        # set inlcude original psm to True and include decoy psm to true
+        if (
+            "include_original_psm" not in config["psm_generator"]["mumble"]
+            or not config["psm_generator"]["mumble"]
+        ):
+            config["psm_generator"]["mumble"]["include_original_psm"] = True
+        if (
+            "include_decoy_psm" not in config["psm_generator"]["mumble"]
+            or not config["psm_generator"]["mumble"]
+        ):
+            config["psm_generator"]["mumble"]["include_decoy_psm"] = True
+
+        mumble_config = config["psm_generator"]["mumble"]
+
+        # Check if psm_list[0].rescoring_features is empty or not
+        if psm_list[0].rescoring_features:
+            logger.debug("Removing psm_file rescoring features from PSMs...")
+            # psm_list.remove_rescoring_features() # TODO add this to psm_utils
+            for psm in psm_list:
+                psm.rescoring_features = {}
+
+        psm_handler = PSMHandler(
+            **mumble_config,
+        )
+        psm_list = psm_handler.add_modified_psms(psm_list)
 
     return psm_list
 

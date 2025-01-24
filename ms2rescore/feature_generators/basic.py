@@ -56,6 +56,7 @@ class BasicFeatureGenerator(FeatureGeneratorBase):
         charge_states = np.array([psm.peptidoform.precursor_charge for psm in psm_list])
         precursor_mzs = psm_list["precursor_mz"]
         scores = psm_list["score"]
+        peptide_lengths = np.array([len(psm.peptidoform.sequence) for psm in psm_list])
 
         has_charge = None not in charge_states
         has_mz = None not in precursor_mzs and has_charge
@@ -74,6 +75,14 @@ class BasicFeatureGenerator(FeatureGeneratorBase):
         if has_score:
             self._feature_names.append("search_engine_score")
 
+        if has_mz and has_charge:
+            experimental_mass = (precursor_mzs * charge_n) - (charge_n * 1.007276466812)
+            theoretical_mass = (theo_mz * charge_n) - (charge_n * 1.007276466812)
+            mass_error = experimental_mass - theoretical_mass
+            self._feature_names.extend(["theoretical_mass", "experimental_mass", "mass_error"])
+
+        self._feature_names.append("pep_len")
+
         for i, psm in enumerate(psm_list):
             psm.rescoring_features.update(
                 dict(
@@ -81,6 +90,10 @@ class BasicFeatureGenerator(FeatureGeneratorBase):
                     **charge_one_hot[i] if has_charge else {},
                     **{"abs_ms1_error_ppm": abs_ms1_error_ppm[i]} if has_mz else {},
                     **{"search_engine_score": scores[i]} if has_score else {},
+                    **{"theoretical_mass": theoretical_mass[i]} if has_mz and has_charge else {},
+                    **{"experimental_mass": experimental_mass[i]} if has_mz and has_charge else {},
+                    **{"mass_error": mass_error[i]} if has_mz and has_charge else {},
+                    **{"pep_len": peptide_lengths[i]},
                 )
             )
 

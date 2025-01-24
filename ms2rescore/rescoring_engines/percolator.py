@@ -19,8 +19,8 @@ If you use Percolator through MS²Rescore, please cite:
 
 import logging
 import subprocess
-from typing import Any, Dict, Optional
 from copy import deepcopy
+from typing import Any, Dict, Optional
 
 import psm_utils
 

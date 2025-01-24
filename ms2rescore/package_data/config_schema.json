@@ -62,6 +62,18 @@
                         "mokapot": {}
                     }
                 },
+                "psm_generator": {
+                    "description": "PSM generator and their configuration.",
+                    "type": "object",
+                    "minProperties": 0,
+                    "maxProperties": 1,
+                    "patternProperties": {
+                        ".*": { "$ref": "#/definitions/psm_generator" },
+                        "mumble": {
+                            "$ref": "#/definitions/mumble"
+                        }
+                    }
+                },
                 "config_file": {
                     "description": "Path to configuration file",
                     "oneOf": [{ "type": "string" }, { "type": "null" }]
@@ -184,6 +196,7 @@
                     "type": "boolean",
                     "default": false
                 }
+                
             }
         }
     },
@@ -195,6 +208,11 @@
         },
         "rescoring_engine": {
             "description": "Rescoring engine configuration",
+            "type": "object",
+            "additionalProperties": true
+        },
+        "psm_generator": {
+            "description": "Additional PSM feature generator configuration",
             "type": "object",
             "additionalProperties": true
         },
@@ -278,6 +296,30 @@
                 }
             }
         },
+        "mumble": {
+            "$ref": "#/definitions/psm_generator",
+            "description": "Mumble PSM generator configuration using Mubmle",
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+                "aa_combinations": {
+                    "description": "Additional amino acid combinations to consider as mass shift",
+                    "type": "integer",
+                    "default": 0
+                },
+                "fasta_file": {
+                    "description": "Maximum number of modifications per peptide",
+                    "oneOf": [{ "type": "string" }, { "type": "null" }],
+                    "default": false
+                },
+                "mass_error": {
+                    "description": "mass error in Da",
+                    "type": "number",
+                    "default": 0.2
+                }
+            }
+        },
+
         "mokapot": {
             "$ref": "#/definitions/rescoring_engine",
             "description": "Mokapot rescoring engine configuration. Additional properties are passed to the Mokapot brew function.",

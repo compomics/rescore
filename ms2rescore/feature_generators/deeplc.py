@@ -43,6 +43,7 @@ class DeepLCFeatureGenerator(FeatureGeneratorBase):
         *args,
         lower_score_is_better: bool = False,
         calibration_set_size: Union[int, float, None] = None,
+        calibration_set: Union[str, None] = None,
         processes: int = 1,
         **kwargs,
     ) -> None:
@@ -74,6 +75,7 @@ class DeepLCFeatureGenerator(FeatureGeneratorBase):
 
         self.lower_psm_score_better = lower_score_is_better
         self.calibration_set_size = calibration_set_size
+        self.calibration_set = calibration_set
         self.processes = processes
         self.deeplc_kwargs = kwargs or {}
 
@@ -123,7 +125,6 @@ class DeepLCFeatureGenerator(FeatureGeneratorBase):
         # Run DeepLC for each spectrum file
         current_run = 1
         total_runs = sum(len(runs) for runs in psm_dict.values())
-
         for runs in psm_dict.values():
             # Reset DeepLC predictor for each collection of runs
             self.deeplc_predictor = None
@@ -141,13 +142,13 @@ class DeepLCFeatureGenerator(FeatureGeneratorBase):
                 )
 
                 # Disable wild logging to stdout by Tensorflow, unless in debug mode
-
-                with contextlib.redirect_stdout(
-                    open(os.devnull, "w", encoding="utf-8")
-                ) if not self._verbose else contextlib.nullcontext():
+                with (
+                    contextlib.redirect_stdout(open(os.devnull, "w", encoding="utf-8"))
+                    if not self._verbose
+                    else contextlib.nullcontext()
+                ):
                     # Make new PSM list for this run (chain PSMs per spectrum to flat list)
                     psm_list_run = PSMList(psm_list=list(chain.from_iterable(psms.values())))
-
                     psm_list_calibration = self._get_calibration_psms(psm_list_run)
                     logger.debug(f"Calibrating DeepLC with {len(psm_list_calibration)} PSMs...")
                     self.deeplc_predictor = self.DeepLC(
@@ -197,7 +198,10 @@ class DeepLCFeatureGenerator(FeatureGeneratorBase):
 
     def _get_calibration_psms(self, psm_list: PSMList):
         """Get N best scoring target PSMs for calibration."""
-        psm_list_targets = psm_list[~psm_list["is_decoy"]]
+        psm_list_targets = psm_list[
+            ~psm_list["is_decoy"]
+            & [metadata.get("original_psm", True) for metadata in psm_list["metadata"]]
+        ]
         if self.calibration_set_size:
             n_psms = self._get_number_of_calibration_psms(psm_list_targets)
             indices = np.argsort(psm_list_targets["score"])

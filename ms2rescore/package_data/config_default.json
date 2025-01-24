@@ -12,6 +12,7 @@
             },
             "maxquant": {}
         },
+        "psm_generator": {},
         "rescoring_engine": {
             "mokapot": {
                 "train_fdr": 0.01,

@@ -1,8 +1,8 @@
 """Entrypoint for MS²Rescore GUI."""
 
+import contextlib
 import multiprocessing
 import os
-import contextlib
 
 from ms2rescore.gui.app import app
 

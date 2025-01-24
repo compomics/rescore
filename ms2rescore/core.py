@@ -13,7 +13,11 @@ from ms2rescore.parse_psms import parse_psms
 from ms2rescore.parse_spectra import add_precursor_values
 from ms2rescore.report import generate
 from ms2rescore.rescoring_engines import mokapot, percolator
-from ms2rescore.rescoring_engines.mokapot import add_peptide_confidence, add_psm_confidence
+from ms2rescore.rescoring_engines.mokapot import (
+    add_peptide_confidence,
+    add_psm_confidence,
+)
+from ms2rescore.utils import filter_mumble_psms
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +109,12 @@ def rescore(configuration: Dict, psm_list: Optional[PSMList] = None) -> None:
             f"rescoring feature(s), {missing_features}."
         )
     psm_list = psm_list[psms_with_features]
+
+    if "mumble" in config["psm_generator"]:
+        # Remove PSMs where matched_ions_pct drops 25% below the original hit
+        psm_list = filter_mumble_psms(psm_list, threshold=0.75)
+        # Currently replace the score with the hyperscore for Mumble
+        # psm_list["score"] = [ft["hyperscore"] for ft in psm_list["rescoring_features"]] # TODO: This is a temporary fix
 
     # Write feature names to file
     _write_feature_names(feature_names, output_file_root)
@@ -211,7 +221,10 @@ def _write_feature_names(feature_names, output_file_root):
 def _log_id_psms_before(psm_list: PSMList, fdr: float = 0.01, max_rank: int = 1) -> int:
     """Log #PSMs identified before rescoring."""
     id_psms_before = (
-        (psm_list["qvalue"] <= 0.01) & (psm_list["rank"] <= max_rank) & (~psm_list["is_decoy"])
+        (psm_list["qvalue"] <= 0.01)
+        & (psm_list["rank"] <= max_rank)
+        & (~psm_list["is_decoy"])
+        & ([metadata.get("original_psm", True) for metadata in psm_list["metadata"]])
     ).sum()
     logger.info(
         f"Found {id_psms_before} identified PSMs with rank <= {max_rank} at {fdr} FDR before "
@@ -277,7 +290,9 @@ def _calculate_confidence(psm_list: PSMList) -> PSMList:
     )
 
     # Recalculate confidence
-    new_confidence = lin_psm_data.assign_confidence(scores=psm_list["score"])
+    new_confidence = lin_psm_data.assign_confidence(
+        scores=list(psm_list["score"])
+    )  # explicity make it a list to avoid TypingError: Failed in nopython mode pipeline (step: nopython frontend) in mokapot
 
     # Add new confidence estimations to PSMList
     add_psm_confidence(psm_list, new_confidence)

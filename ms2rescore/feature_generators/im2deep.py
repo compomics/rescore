@@ -161,7 +161,8 @@ class IM2DeepFeatureGenerator(FeatureGeneratorBase):
         identified_psms = psm_list_df[
             (psm_list_df["qvalue"] < 0.01)
             & (~psm_list_df["is_decoy"])
-            & (psm_list_df["charge"] < 5)  # predictions do not go higher for IM2Deep
+            & (psm_list_df["charge"] < 7)  # predictions do not go higher for IM2Deep
+            & ([metadata.get("original_psm", True) for metadata in psm_list_df["metadata"]])
         ]
         calibration_psms = identified_psms[
             identified_psms["qvalue"] < identified_psms["qvalue"].quantile(1 - threshold)
